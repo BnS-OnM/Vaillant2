@@ -284,7 +284,7 @@ def create_quotation_from_xlsx_data(
         
         if product_id:
             # Product already matched (e.g., by EPB parser with fuzzy matching)
-            logger.info(f"Using pre-matched product_id={product_id} for '{description[:LOG_DESCRIPTION_MAX_LENGTH]}'")
+            logger.info(f"Using pre-matched product_id={product_id} for '{(description or '')[:LOG_DESCRIPTION_MAX_LENGTH]}'")
             products_found += 1
         elif product_code:
             # FACQ products: search by product code
@@ -307,7 +307,7 @@ def create_quotation_from_xlsx_data(
             if product_code:
                 logger.info(f"Creating product line for '{product_code}' with product_id={product_id}")
             else:
-                logger.info(f"Creating product line for '{description[:LOG_DESCRIPTION_MAX_LENGTH]}...' with product_id={product_id}")
+                logger.info(f"Creating product line for '{(description or '')[:LOG_DESCRIPTION_MAX_LENGTH]}...' with product_id={product_id}")
         else:
             # Product not found and creation failed - create a description line
             if product_code:
