@@ -271,7 +271,6 @@ def create_quotation_from_xlsx_data(
 
     # Add order lines
     products_found = 0
-    products_created = 0
     products_not_found = 0
     
     for line in lines:
@@ -280,44 +279,19 @@ def create_quotation_from_xlsx_data(
         quantity = line.get("quantity", 1)
         unit_price = line.get("unit_price", 0.0)
         
-        # Try to find the product by its reference code or by fuzzy name matching
-        product_id = None
+        # Check if product_id is already provided (e.g., from EPB fuzzy matching)
+        product_id = line.get("product_id")
         
-        if product_code:
+        if product_id:
+            # Product already matched (e.g., by EPB parser with fuzzy matching)
+            logger.info(f"Using pre-matched product_id={product_id} for '{description[:LOG_DESCRIPTION_MAX_LENGTH]}'")
+            products_found += 1
+        elif product_code:
             # FACQ products: search by product code
             product_id = search_product_by_reference(uid, product_code)
             
             if product_id:
                 products_found += 1
-        else:
-            # EPB products (no product code): use fuzzy matching by name
-            if description:
-                product_id = fuzzy_search_product_by_name(uid, description, threshold=FUZZY_MATCH_THRESHOLD)
-                
-                if product_id:
-                    products_found += 1
-                else:
-                    # No match found (0% match) - create new product
-                    logger.info(f"No match found for EPB product '{description}' - creating new product")
-                    try:
-                        # Validate that we have a description before creating
-                        if not description or len(description.strip()) < 2:
-                            logger.warning(f"Description too short to create product: '{description}'")
-                            product_id = None
-                        else:
-                            product_data = {
-                                "name": description,
-                                "list_price": unit_price,
-                                "type": "product",  # Standard stockable product
-                                "sale_ok": True,  # Can be sold
-                                "purchase_ok": False,  # EPB products are sales-only
-                            }
-                            product_id = call(uid, "product.product", "create", [product_data])
-                            logger.info(f"Created new product '{description}' with product_id={product_id}")
-                            products_created += 1
-                    except Exception as e:
-                        logger.error(f"Failed to create product '{description}': {str(e)}")
-                        product_id = None
         
         # Prepare order line data
         order_line_data = {
@@ -363,7 +337,7 @@ def create_quotation_from_xlsx_data(
             logger.error(f"Failed to create order line for product '{product_code or (description or '')[:30]}': {str(e)}")
             raise
 
-    logger.info(f"Quotation created successfully: {products_found} products found, {products_created} products created, {products_not_found} description lines created")
+    logger.info(f"Quotation created successfully: {products_found} products found, {products_not_found} description lines created")
     return order_id
 
 
