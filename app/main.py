@@ -107,6 +107,17 @@ async def upload_pdf_and_import_to_odoo(
                 logger.warning(f"Could not get Odoo uid for fuzzy matching: {str(e)}")
             
             xlsx_file, lines_data = epb_pdf_to_xlsx_and_data(pdf_bytes, uid=uid)
+        elif pdf_type == PDFType.VAILLANT_VOORSTEL:
+            # For Vaillant PDFs, use EPB parser with fuzzy matching (similar structure)
+            uid = None
+            try:
+                from app.odoo import login
+                uid = login()
+                logger.info("Odoo uid obtained for Vaillant fuzzy matching")
+            except Exception as e:
+                logger.warning(f"Could not get Odoo uid for fuzzy matching: {str(e)}")
+            
+            xlsx_file, lines_data = epb_pdf_to_xlsx_and_data(pdf_bytes, uid=uid)
         else:
             # Default to FACQ parser for FACQ and unknown types
             if pdf_type == PDFType.UNKNOWN:
@@ -147,6 +158,9 @@ async def upload_pdf_and_import_to_odoo(
                 }
             )
 
+    # Reset file pointer to beginning before streaming
+    xlsx_file.seek(0)
+    
     # Return XLSX file with headers indicating Odoo import success
     headers = {
         "Content-Disposition": "attachment; filename=facq_offerte.xlsx",
