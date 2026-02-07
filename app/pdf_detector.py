@@ -8,6 +8,7 @@ from enum import Enum
 class PDFType(Enum):
     FACQ_OFFERTE = "facq_offerte"
     EPB_VOORSTEL = "epb_voorstel"
+    VAILLANT_VOORSTEL = "vaillant_voorstel"
     UNKNOWN = "unknown"
 
 def detect_pdf_type(pdf_bytes: bytes) -> PDFType:
@@ -34,6 +35,10 @@ def detect_pdf_type(pdf_bytes: bytes) -> PDFType:
             if not text:
                 return PDFType.UNKNOWN
             
+            # Vaillant indicators
+            vaillant_indicators = ["vaillant", "ecotec", "atag", "warmtepomp"]
+            vaillant_score = sum(1 for indicator in vaillant_indicators if indicator in text)
+            
             # EPB indicators
             epb_indicators = ["legende", "installatievoorstel", "epb", "energieprestatie"]
             epb_score = sum(1 for indicator in epb_indicators if indicator in text)
@@ -47,10 +52,13 @@ def detect_pdf_type(pdf_bytes: bytes) -> PDFType:
             price_patterns = len(re.findall(r'\d+[.,]\d{2}', text))
             article_patterns = len(re.findall(r'\b\d{5,6}\b', text))
             
-            print(f"DEBUG: EPB score={epb_score}, FACQ score={facq_score}, prices={price_patterns}, articles={article_patterns}")
+            print(f"DEBUG: Vaillant score={vaillant_score}, EPB score={epb_score}, FACQ score={facq_score}, prices={price_patterns}, articles={article_patterns}")
             
             # Beslissingslogica
-            if epb_score >= 2:
+            # Prioritize Vaillant detection first
+            if vaillant_score >= 1:
+                return PDFType.VAILLANT_VOORSTEL
+            elif epb_score >= 2:
                 return PDFType.EPB_VOORSTEL
             elif facq_score >= 2 or (price_patterns > 10 and article_patterns > 5):
                 return PDFType.FACQ_OFFERTE
